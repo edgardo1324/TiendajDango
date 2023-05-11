@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Store, Brand, Offer, User
+from .models import Store, Brand, Offer,User, UserStore
+
 
 class StoreSerializer(serializers.ModelSerializer):
     class Meta:
@@ -16,7 +17,21 @@ class OfferSerializer(serializers.ModelSerializer):
         model = Offer
         fields = '__all__'
 
+# crearusuario
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = '__all__'
+        fields = ('email', 'password')
+#endpoint 5 usuarios y tienda
+class StoreSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Store
+        fields = ['id', 'brand', 'identifier', 'name', 'address']
+
+class UserStoreSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+    store = StoreSerializer()
+
+    class Meta:
+        model = UserStore
+        fields = ['user', 'store']

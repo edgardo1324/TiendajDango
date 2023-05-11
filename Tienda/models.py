@@ -20,7 +20,9 @@ class Offer(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
 
 class User(models.Model):
-    username = models.CharField(max_length=255)
-    favorite_store = models.ForeignKey(Store, on_delete=models.SET_NULL, null=True)
+    email = models.CharField(max_length=255, unique=True)
+    password = models.CharField(max_length=128)
 
-    USERNAME_FIELD = 'username'
+class UserStore(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    store = models.ForeignKey(Store, on_delete=models.CASCADE)

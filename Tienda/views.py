@@ -1,11 +1,14 @@
-from django.contrib.auth import authenticate, login
-from rest_framework import generics, status
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from Tienda.models import Offer, Brand, Store, User
+from rest_framework import generics
+from Tienda.models import Offer, Brand, Store, UserStore
 from .serializers import StoreSerializer, BrandSerializer, OfferSerializer
-from django.http import JsonResponse
-from django.views.decorators.http import require_GET
+from django.contrib.auth import get_user_model
+from .serializers import  StoreSerializer
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .serializers import UserSerializer, StoreSerializer, UserStoreSerializer
+User = get_user_model()
+
 
 class StoreList(generics.ListAPIView):
     queryset = Store.objects.all()
@@ -18,55 +21,32 @@ class BrandList(generics.ListAPIView):
 class OfferList(generics.ListAPIView):
     queryset = Offer.objects.all()
     serializer_class = OfferSerializer
+#crear usarios
+class UserRegistrationView(APIView):
+    def post(self, request):
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#endpoint 5 usuarios y tienda
+class UserStoreSelectionView(APIView):
+    def post(self, request):
+        email = request.data.get('email')
+        name = request.data.get('name')
 
-@api_view(['POST'])
-def login_register(request):
-    username = request.data.get('username')
-    otp = request.data.get('otp')
-
-    # Verificar si el usuario ya existe
-    user = User.objects.filter(username=username).first()
-
-    if not user:
-        # Si el usuario no existe, se crea uno nuevo
-        user = User.objects.create(username=username)
-
-    # Verificar el OTP y autenticar al usuario
-    if otp == 'OTP_VALIDO':
-        user = authenticate(request, username=username)
-        if user:
-            # Iniciar sesión y generar el token de acceso OAuth2
-            login(request, user)
-            return Response({'token': user.auth_token.key}, status=status.HTTP_200_OK)
-
-    return Response({'message': 'Credenciales inválidas'}, status=status.HTTP_401_UNAUTHORIZED)
-
-def subscribe_user_to_store(request):
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        store_id = request.POST.get('store_id')
-        
         try:
-            user = User.objects.get(username=username)
-            store = Store.objects.get(id=store_id)
-            
-            user.favorite_store = store
-            user.save()
-            
-            return JsonResponse({'success': True, 'message': 'User subscribed to store successfully.'})
+            user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return JsonResponse({'success': False, 'message': 'User not found.'})
-        except Store.DoesNotExist:
-            return JsonResponse({'success': False, 'message': 'Store not found.'})
-    
-    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+            return Response("User not found.", status=status.HTTP_404_NOT_FOUND)
 
-@require_GET
-def users_by_store(request, store_id):
-    try:
-        store = Store.objects.get(id=store_id)
-        users = User.objects.filter(favorite_store=store)
-        user_list = [user.username for user in users]
-        return JsonResponse({'users': user_list})
-    except Store.DoesNotExist:
-        return JsonResponse({'error': 'Store not found'}, status=404)
+        try:
+            store = Store.objects.get(name=name)
+        except Store.DoesNotExist:
+            return Response("Store not found.", status=status.HTTP_404_NOT_FOUND)
+
+        user_store = UserStore(user_id=user.id, store_id=store.id)
+        user_store.save()
+
+        serializer = UserStoreSerializer(user_store)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
